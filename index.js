@@ -32,5 +32,5 @@ async function test(){
     let result = await waitFor('test', client, 1000)
     console.log(result)
 }
-test()
-// client.open()
+// test()
+client.open()

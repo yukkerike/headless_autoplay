@@ -1,5 +1,6 @@
 const { Logger, GameClient, ClientData, PacketClient } = require('sq-lib')
-const { waitFor, composeLogin, input, sleep } = new require('./helpers')
+const { waitForResult, composeLogin, input, sleep } = require('./helpers')
+const { executeAndWait } = require("./helpers");
 
 const session = "" // javascript:(function(){var _=prompt('',document.getElementById('flash-app').childNodes[1].value)})()
 
@@ -12,12 +13,11 @@ function handlePacket(client, packet, buffer) {
 }
 
 async function handleConnect(client) {
-	console.log(waitFor)
-	client.sendData('HELLO')
-	await waitFor('packet.incoming', 'PacketGuard', client, 1000)
+	console.log(waitForResult)
+	await executeAndWait(() => client.sendData('HELLO'), 'packet.incoming', 'PacketGuard', client, 1000)
 	client.sendData('GUARD', [])
 	client.sendData('LOGIN', ...composeLogin(session))
-	await waitFor('packet.incoming', 'PacketLogin', client, 1000)
+	await waitForResult('packet.incoming', 'PacketLogin', client, 1000)
 	client.sendData('AB_GUI_ACTION', 0)
 	await sleep(100)
 	while(1){

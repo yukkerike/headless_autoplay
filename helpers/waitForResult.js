@@ -1,7 +1,6 @@
 module.exports = function (event, type, client, timeout = 0) {
-    console.log(type)
     const onPacket = (resolve, packet, buffer) => {
-        if (packet.type === type) {
+        if (typeof(type) === 'function' && type(packet) || packet.type === type) {
             client.off(event, onPacket)
             resolve(packet, buffer)
         }

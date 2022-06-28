@@ -36,14 +36,14 @@ server.on('client.connect', (client) => {
     proxy.on('client.error', (error) => client.close())
     proxy.on('client.timeout', () => client.close())
     proxy.on('packet.incoming', (packet, buffer) => {
-        log('incoming', packet)
+        log('incoming', packet, JSON.stringify(buffer))
         client.sendPacket(packet)
     })
     client.proxy = proxy
     proxy.open()
 })
-server.on('packet.incoming', async (client, packet) => {
-    log('outcoming', packet)
+server.on('packet.incoming', async (client, packet, buffer) => {
+    log('outcoming', packet, JSON.stringify(buffer))
     client.proxy.sendPacket(packet)
 })
 server.on('client.close', (client) => client.proxy.close())

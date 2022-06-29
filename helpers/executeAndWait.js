@@ -1,7 +1,7 @@
 const waitForResult = require('./waitForResult')
 
-module.exports = function (func, event, type, client, timeout = 0) {
-    const promise = waitForResult(event, type, client, timeout)
+module.exports = function (emitter, func, event, type, timeout = 0) {
+    const promise = waitForResult(emitter, event, type, timeout)
     func()
     return promise
 }

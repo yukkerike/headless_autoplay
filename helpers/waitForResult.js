@@ -1,16 +1,20 @@
-module.exports = function (event, type, client, timeout = 0) {
-    const onPacket = (resolve, packet, buffer) => {
+module.exports = function (emitter, event, type, timeout = 0) {
+    const onPacket = (resolve, packet) => {
+        // if (typeof(type) === 'function') console.log('test', packet, type(packet))
         if (typeof(type) === 'function' && type(packet) || packet.type === type) {
-            client.off(event, onPacket)
-            resolve(packet, buffer)
+            emitter.off(event, onPacket)
+            clearTimeout(timeoutId)
+            resolve(packet)
         }
     }
+    let timeoutId
     return new Promise(
         (resolve, reject) => {
-            client.on(event, onPacket.bind(this, resolve))
+            emitter.on(event, onPacket.bind(this, resolve))
             if (timeout > 0) {
-                setTimeout(() => {
-                    client.off(event, onPacket)
+                timeoutId = setTimeout(() => {
+                    emitter.off(event, onPacket)
+                    console.error('Timeout', type)
                     reject(new Error('Timeout'))
                 }, timeout)
             }

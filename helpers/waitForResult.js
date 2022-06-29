@@ -1,7 +1,7 @@
 module.exports = function (emitter, event, type, timeout = 0) {
     const onPacket = (resolve, packet) => {
         // if (typeof(type) === 'function') console.log('test', packet, type(packet))
-        if (typeof(type) === 'function' && type(packet) || packet.type === type) {
+        if (typeof (type) === 'function' && type(packet) || packet.type === type) {
             emitter.off(event, onPacket)
             clearTimeout(timeoutId)
             resolve(packet)

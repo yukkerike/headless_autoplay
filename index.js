@@ -1,284 +1,40 @@
-const {Logger} = require('sq-lib')
-const {waitForResult, executeAndWait, composeLogin, input, sleep, createClient} = require('./helpers')
+const Player = require('./Player')
+const fs = require("fs")
 
-const session = "" // javascript:(function(){var _=prompt('',document.getElementById('flash-app').childNodes[1].value)})()
-const host = '88.212.206.137'
-const ports = ['11111', '11211', '11311']
+const {host, ports, logNet, players} = JSON.parse(fs.readFileSync('./config.json', 'utf8'))
+const repl = players.length === 1
 
-const log = Logger.info
-const logNet = 0
-Logger.setOptions({logFile: 0, debug: 0, info: 1, warn: 1, error: 1, fatal: 1})
+let clients = players.map((player, index) => {
+    if (!player.session) {
+        console.log('Cессия не задана для игрока №' + index)
+        return
+    }
+    try {
+        return new Player(host, ports, {...player, log: logNet, repl})
+    } catch (e) {
+        if (e.message === 'Invalid session') {
+            console.log('Cессия невалидна для игрока №' + index)
+        }
+    }
+})
 
 function terminate() {
     console.log('Завершение работы...')
-    players.map(player => player.client.close())
+    try{
+        clients.forEach(client => client.client.close())
+    }catch (e) {
+        console.error(e)
+    }
     process.exit()
 }
 
 process.on('uncaughtException', e => {
-    console.error('Произошла ошибка', e)
+    if(e instanceof TypeError) {
+        console.log("Токен должен быть в формате\nuseApiType=mm&vid=856304777023089879&access_token=13f4d9304f58e6227a6ba4b4b783aec5&app_id=702077&app_secret=2ca22221fe51f8ca73ccd6ae846f9275&authentication_key=&token=53939e5aaf59822c991822495f31dcb4&userId=856304777023089879&net_type=1&OAuth=1&protocol=https:\nПолучить можно букмарклетом javascript:(function(){var _=prompt('',document.getElementById('flash-app').childNodes[1].value)})()")
+    }else{
+        console.error('Произошла ошибка', e)
+    }
     terminate()
 })
 process.on('SIGINT', terminate)
 process.on('SIGTERM', terminate)
-
-class Player {
-    self = null
-    inRoom = false
-    moderatorsOnline = false
-    rooms = []
-
-    room = {
-        mapDuration: 0,
-        playerCount: 0
-    }
-
-    settings = {
-        log: false,
-        checkModerators: true,
-        autoPlay: true,
-        playInClan: true,
-        locationId: 4,
-        surrender: false,
-        roomId: null,
-        joinId: null
-    }
-
-    constructor(session, settings = {}) {
-        this.session = session
-        this.settings = {...this.settings, ...settings}
-        const client = createClient(host, ports)
-        this.client = client
-        client.on('client.connect', () => this.handleConnect(client))
-        client.on('client.close', () => this.handleClose(client))
-        client.on('packet.incoming', (packet, buffer) => this.handlePacket(client, packet, buffer))
-        client.on('packet.incoming', (packet, buffer) => this.logPacket(packet, buffer))
-        client.on('packet.outcoming', (packet, buffer) => this.logPacket(packet, buffer))
-        client.setMaxListeners(0)
-        client.open()
-    }
-
-    logPacket(packet, buffer) {
-        if (this.settings.log)
-            log('net', packet, JSON.stringify(buffer))
-    }
-
-    handleClose() {
-        log('net', 'Сервер закрыл соединение')
-        process.exit(0)
-    }
-
-    async handleConnect(client) {
-        client.sendData('HELLO')
-        let login = {data: {status: 2}}
-        while (login.data.status === 2) {
-            login = await executeAndWait(
-                client,
-                () => client.sendData('LOGIN', ...composeLogin(this.session)),
-                'packet.incoming',
-                'PacketLogin',
-                1000)
-        }
-        if (login.data.status) {
-            log('net', 'Логин не удался, статус:', login.data.status)
-            process.exit(1)
-        }
-        const selfId = login.data.innerId
-        this.self = (await executeAndWait(
-                client,
-                () => client.sendData('REQUEST', [[selfId]], 4194303),
-                'packet.incoming',
-                packet => packet.type === 'PacketInfo' && packet.data.data[0].uid === selfId,
-                2000)
-        ).data.data[0]
-        client.sendData('AB_GUI_ACTION', 0)
-        this.getSurrender().then(canSurrender => {
-            if(this.settings.surrender) this.settings.surrender = canSurrender
-            if (!canSurrender) log('net', 'Капитуляция не прокачана')
-        })
-        if (this.settings.autoPlay)
-            this.startAutoplay(client)
-        await sleep(100)
-        while (1) {
-            let expression = await input('autoplay_repl >>> ')
-            try {
-                console.log(eval(expression))
-            } catch (e) {
-                console.log(e)
-            }
-        }
-    }
-
-    async getSurrender() {
-        const skills = this.self.shaman_skills
-        for (let i = 0; i < skills.length; i++)
-            if (skills[i].skillId === 21 && (skills[i].levelFree > 0 || skills[i].levelPaid > 0))
-                return true
-        return false
-    }
-
-    async checkModerators(client) {
-        if (!this.settings.checkModerators) return
-        const ids = [[7], [22], [125330], [427140], [1452374], [4895807], [9419562], [9419675], [9479297], [11231704], [17986739]]
-        const online = (await executeAndWait(
-            client,
-            () => client.sendData('REQUEST', ids, 64),
-            'packet.incoming',
-            'PacketInfo',
-            1000)).data.data
-        const isOnline = online.filter(id => id.online === 1).length > 0
-        if (!isOnline && this.moderatorsOnline && !this.inRoom) {
-            log('net', 'Модератор вышел из сети, заходим в комнату')
-            this.startRound(client)
-        }
-        if (this.settings.surrender && isOnline && this.inRoom) {
-            log('net', 'Модератор вошел в сеть, прекращаем капитуляцию и выходим из комнаты')
-            this.settings.surrender = false
-            client.sendData('LEAVE')
-        }
-        this.moderatorsOnline = isOnline
-    }
-
-    handlePacket(client, packet, buffer) {
-        switch (packet.type) {
-            case 'PacketEnergy':
-                this.energy = packet.data.energy
-                break
-            case 'PacketClanPrivateRooms':
-                this.rooms = packet.data.items
-                break
-            case 'PacketGuard':
-                client.sendData('GUARD', [])
-                break
-            case 'PacketRoom':
-                client.sendData('ROUND_ALIVE')
-                this.inRoom = true
-                this.aliveTimer = setInterval(() => client.sendData('ROUND_ALIVE'), 5000)
-            case 'PacketRoomRound':
-                if (packet.data.mapDuration > 0)
-                    this.room.mapDuration = packet.data.mapDuration
-                client.sendData('AB_GUI_ACTION', 0)
-                break
-            case 'PacketRoundDie':
-                if (packet.data.playerId === this.self.uid)
-                    client.sendData('AB_GUI_ACTION', 1)
-                break
-            case 'PacketRoundHollow':
-                if (packet.data.success === 1 && packet.data.playerId === this.self.uid) {
-                    log('net', 'В дупле')
-                    client.sendData('AB_GUI_ACTION', 1)
-                }
-                break
-            case 'PacketRoomLeave':
-                clearInterval(this.aliveTimer)
-                this.inRoom = false
-                log('net', 'Выход из комнаты')
-                break
-            case 'PacketBalance':
-                if (packet.data.nuts >= 2147483500) {
-                    this.settings.surrender = false
-                    log('net', 'Остановлен автокап во избежание обнуления орехов')
-                }
-                break
-        }
-        if(this.settings.autoPlay) this.handleAutoplayPacket(client, packet, buffer)
-    }
-
-    async loadRooms(client) {
-        if (this.self.clanId !== 0)
-            this.rooms = (await executeAndWait(client, () => client.sendData('CLAN_GET_ROOMS'), 'packet.incoming', 'PacketClanPrivateRooms')).data.items
-    }
-
-    async startAutoplay(client) {
-        console.log('Запускаем автоплеер')
-        if (this.settings.playInClan)
-            await this.loadRooms(client)
-        this.checkModerators(client)
-        setInterval(() => this.checkModerators(client), 10000)
-        this.startRound(client)
-        setInterval(() => this.startRound(client), 60000)
-    }
-
-    handleAutoplayPacket(client, packet, buffer) {
-        switch (packet.type) {
-            case 'PacketRoomRound':
-                if (packet.data.type === 4) {
-                    log('net', 'Начало раунда')
-                    setTimeout(() => {
-                        this.toHollow(client)
-                    }, this.settings.surrender ? (this.room.mapDuration - 10) * 1000 : 4100)
-                }
-                break
-            case 'PacketRoom':
-                this.room.playerCount = packet.data.players.length + 1
-                break
-            case 'PacketRoomJoin':
-                this.room.playerCount++
-                break
-            case 'PacketRoomLeave':
-                this.room.playerCount--
-                break
-            case 'PacketRoundShaman':
-                if (!this.settings.surrender) break
-                const shamans = packet.data.playerId
-                shamans.map(shaman => {
-                    if (shaman === this.self.uid && this.room.playerCount > 2)
-                        client.sendData('ROUND_SKILL_SHAMAN', 20, true)
-                })
-                break
-        }
-    }
-
-    toHollow(client) {
-        log('net', 'Заход в дупло')
-        client.sendData('ROUND_NUT', 0)
-        client.sendData('ROUND_HOLLOW', 0)
-        client.sendData('AB_GUI_ACTION', 1)
-        if (this.settings.checkModerators && this.moderatorsOnline) {
-            client.sendData('LEAVE')
-            log('net', 'Модератор в сети, выходим из комнаты')
-        }
-
-    }
-
-    async startRound(client) {
-        if (this.inRoom) return
-        if (this.settings.joinId > 0) {
-            const playWith = await executeAndWait(
-                client,
-                () => client.sendData('PLAY_WITH', this.settings.joinId),
-                'packet.incoming',
-                'PacketPlayWith',
-                200
-            )
-            if (playWith.data.roomId === -1) {
-                log('net', 'Игрок не в сети, повторение через 10 секунд')
-                setTimeout(this.startRound(client), 10000)
-                return
-            }
-            log('net', 'Вход за', this.settings.joinId)
-            return
-        }
-        if (this.settings.playInClan) {
-            if (!this.settings.roomId || this.rooms.filter(room => room.roomId === this.settings.roomId).length === 0) {
-                log('net', 'Комната не задана, либо не найдена. Фолбек на preferredLocationId.')
-                this.settings.roomId = this.rooms.filter(room => room.locationId === this.settings.locationId)[0].roomId
-            }
-            client.sendData('PLAY_ROOM', this.settings.roomId)
-            log('net', 'Вход в комнату', this.settings.roomId)
-        } else {
-            client.sendData('PLAY', this.settings.locationId, 0)
-            log('net', 'Поиск комнаты')
-        }
-    }
-}
-
-const players = [new Player(session, {
-    playInClan: 1,
-    autoPlay: 1,
-    locationId: 4,
-    checkModerators: 1,
-    joinId: -1,
-    log: logNet,
-    surrender: 0
-})]

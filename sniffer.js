@@ -51,7 +51,7 @@ server.on('client.error', (client, error) => client.proxy.close())
 server.on('client.timeout', (client) => client.proxy.close())
 server.listen()
 
-const terminate = function() {
+const terminate = function () {
     console.log('Завершение работы...')
     process.exit()
 }

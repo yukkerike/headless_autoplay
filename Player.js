@@ -207,7 +207,7 @@ class Player {
                     if (this.energy < this.energyLimit)
                         this.energy += this.hasVip ? 2 : 1
                 }, 62000)
-                if (this.settings.buyVIP && !this.hasVip && this.coins >= 10) {
+                if (this.settings.buyVIP && !this.hasVip && this.coins >= 10 && this.energy < 10) {
                     client.sendData('BUY', 45, 10, 0, this.self.uid, 0)
                     log('net', this.self.uid, 'Закуплен VIP на сутки')
                 }

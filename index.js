@@ -1,5 +1,6 @@
 const Player = require('./Player')
 const fs = require("fs")
+const {sleep} = require("./helpers");
 
 const {host, ports, logNet, repl, players, defaults} = JSON.parse(fs.readFileSync('./config.json', 'utf8'))
 
@@ -9,17 +10,21 @@ const clients = players.map((player, index) => {
         return
     }
     try {
-        return new Player(host, ports, {...defaults, ...player, log: logNet, repl})
+        return new Player(host, ports, {...defaults, ...player, logNet})
     } catch (e) {
         if (e.message === 'Invalid session') {
             console.log('Cессия невалидна для игрока №' + index)
+        }else{
+            console.error(e)
         }
     }
 })
+global.clients = clients
 
 if (repl)
     (async  () => {
-        console.log('Список игроков а массиве clients')
+        await sleep(200)
+        console.log('Список игроков – в массиве clients')
         const repl = require('node:repl').REPLServer()
         Object.assign(repl.context, {...require('./helpers'), clients})
         repl.on('exit', terminate)

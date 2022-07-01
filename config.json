@@ -1,21 +1,24 @@
 {
   "host": "88.212.206.137",
   "ports": ["11111", "11211", "11311"],
-  "log_net": true,
+  "logNet": false,
   "repl": true,
   "defaults": {
+    "reconnect": false,
     "checkModerators": true,
     "autoPlay": true,
     "playInClan": true,
     "locationId": 4,
     "surrender": false,
     "roomId": null,
-    "joinId": null
+    "joinId": null,
+    "clanIdToJoin": 0,
+    "buyVIP": false,
+    "donateLevel": null
   },
   "players": [
     {
-      "session": "",
-      "autoPlay": false
+      "session": ""
     }
   ]
 }

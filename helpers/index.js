@@ -4,5 +4,8 @@ module.exports = {
     input: require('./input'),
     waitForResult: require('./waitForResult'),
     executeAndWait: require('./executeAndWait'),
-    sleep: require('./sleep')
+    sleep: require('./sleep'),
+    experienceToLevel: require('./experienceToLevel'),
+    canJoinToLocation: require('./canJoinToLocation'),
+    searchMaxLocationIdForLevel: require('./searchMaxLocationIdForLevel')
 }

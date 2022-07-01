@@ -4,7 +4,8 @@
   "description": "Автокач на основе sq-lib",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "sniff": "node sniff.js"
   },
   "author": "",
   "license": "GPL-2.0",

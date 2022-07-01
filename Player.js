@@ -65,9 +65,34 @@ class Player {
             new Error('Invalid session')
         }
         const selfId = login.data.innerId
+        /*{
+            "type": 0,
+            "NET_ID": 1,
+            "TYPE": 2,
+            "MODERATOR": 4,
+            "NAME": 8,
+            "SEX": 16,
+            "PHOTO": 32,
+            "ONLINE": 64,
+            "INFO": 128,
+            "EXPERIENCE": 256,
+            "WEARED": 512,
+            "CLAN": 1024,
+            "COLLECTION_EXCHANGE": 2048,
+            "IS_GONE": 4096,
+            "CLAN_TOTEM": 8192,
+            "VIP_INFO": 16384,
+            "INTERIOR": 32768,
+            "SHAMAN_EXP": 65536,
+            "SHAMAN_SKILLS": 131072,
+            "RATING_INFO": 262144,
+            "RATING_HISTORY": 524288,
+            "RATING_HOLIDAY": 1048576,
+            "TROPHIES": 2097152
+        } Список полей для получения информации об игроке, объединяются через логическое ИЛИ */
         this.self = (await executeAndWait(
                 client,
-                () => client.sendData('REQUEST', [[selfId]], 4194303),
+                () => client.sendData('REQUEST', [[selfId]], 148744),
                 'packet.incoming',
                 packet => packet.type === 'PacketInfo' && packet.data.data[0].uid === selfId,
                 2000)
@@ -80,16 +105,6 @@ class Player {
         if (this.settings.autoPlay)
             this.startAutoplay(client)
         await sleep(100)
-        if (this.settings.repl) {
-            while (1) {
-                let expression = await input('autoplay_repl >>> ')
-                try {
-                    console.log(eval(expression))
-                } catch (e) {
-                    console.log(e)
-                }
-            }
-        }
     }
 
     async getSurrender() {

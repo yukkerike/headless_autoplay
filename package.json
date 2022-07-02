@@ -1,6 +1,6 @@
 {
   "name": "headless_autoplay",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Автокач на основе sq-lib",
   "main": "index.js",
   "scripts": {

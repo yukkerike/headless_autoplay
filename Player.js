@@ -24,6 +24,7 @@ class Player {
     rooms = []
     coins = 0
     nuts = 0
+    pingInterval = null
     energyInterval = null
     vipExpirationTimeout = null
     hasVip = false
@@ -63,13 +64,19 @@ class Player {
         client.on('client.connect', () => this.handleConnect(client))
         client.on('client.close', () => this.handleClose(client))
         client.on('packet.incoming', (packet, buffer) => this.handlePacket(client, packet, buffer))
-        client.on('packet.incoming', (packet, buffer) => this.logPacket(packet, buffer))
-        client.on('packet.outcoming', (packet, buffer) => this.logPacket(packet, buffer))
+        client.on('packet.incoming', (packet, buffer) => this.logPacket(packet, buffer, 0))
+        client.on('packet.outcoming', (packet, buffer) => this.logPacket(packet, buffer, 1))
         client.setMaxListeners(0)
         client.open()
     }
 
-    logPacket(packet, buffer) {
+    logPacket(packet, buffer, out) {
+        if (out) {
+            clearInterval(this.pingInterval)
+            this.pingInterval = setInterval(() => {
+                this.client.sendData('PING', 0)
+            }, 30000)
+        }
         if (this.settings.logNet)
             log('net', this.self.uid, packet, JSON.stringify(buffer))
     }

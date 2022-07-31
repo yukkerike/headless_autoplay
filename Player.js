@@ -147,7 +147,6 @@ class Player {
         }
         if (this.settings.autoPlay)
             this.startAutoplay(client)
-
     }
 
     async getSurrender() {
@@ -206,18 +205,6 @@ class Player {
                 shamans.map(shaman => {
                     if (shaman === this.self.uid && this.room.playerCount > 1)
                         client.sendData('ROUND_SKILL_SHAMAN', 20, true)
-                })
-                break
-            case 'PacketGiftsTarget':
-                log('net', this.self.uid, 'Отправлены подарки')
-                client.sendData('GIFT_SEND', packet.data.ids)
-                break
-            case 'PacketGifts':
-                packet.data.items.forEach(gift => {
-                    setTimeout(() => {
-                        client.sendData('GIFT_ACCEPT', 0, gift.id)
-                        log('net', this.self.uid, 'Принят подарок ' + gift.id)
-                    }, gift.time * 1000 - Date.now())
                 })
                 break
             case 'PacketDailyBonusData':

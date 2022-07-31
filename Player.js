@@ -29,6 +29,8 @@ class Player {
     vipExpirationTimeout = null
     hasVip = false
     subleader = false
+    canRefineEnergy = false
+    date = 0
 
     room = {
         mapDuration: 0,
@@ -37,6 +39,7 @@ class Player {
 
     settings = {
         reconnect: true,
+        reconnectForDailyBonus: false,
         session: "",
         log: false,
         autoPlay: true,
@@ -91,7 +94,16 @@ class Player {
         }
     }
 
+    dump() {
+        console.log('ID: ' + this.self.uid + '\nЭнергия: ' + this.energy + '\nОрехи: ' + this.nuts + '\nМонеты: ' + this.coins + '\nВ комнате: ' + (this.inRoom ? 'Да' : 'Нет'))
+    }
+
+    getDate() {
+        return new Date(Date().toLocaleString('en-en', {timeZone: 'Europe/Moscow'})).getDate()
+    }
+
     async handleConnect(client) {
+        this.date = this.getDate()
         client.sendData('HELLO')
         let login = { data: { status: 2 } }
         while (login.data.status === 2) {
@@ -103,11 +115,13 @@ class Player {
                 1000)
         }
         this.self.uid = login.data.innerId
-        log('net', this.self.uid, 'статус логина:' + login.data.status)
+        if (this.self.uid === this.settings.joinId) this.settings.joinId = null
         if (login.data.status !== 0) {
-            new Error('Invalid session')
+            log('net', 'Закрываем сокет')
+            this.settings.reconnect = false
+            client.close()
             return
-        }
+        } else log('net', this.self.uid, 'статус логина:' + login.data.status)
         // sq-lib/shared/PlayerInfoData.js Список полей для получения информации об игроке, объединяются через логическое ИЛИ
         try {
             this.self = (await executeAndWait(
@@ -171,9 +185,17 @@ class Player {
             log('net', this.self.uid, 'Получен лвл ' + this.self.level + ', вкладываем в клан все ресурсы и выходим')
             client.sendData('CLAN_DONATION', this.coins, this.nuts)
             client.sendData('CLAN_LEAVE')
-            if (this.settings.clanIdToJoin)
-                this.settings.clanIdToJoin = null
+            this.settings.reconnect = false
+            client.close()
         }
+    }
+
+    claimBonus(client, day) {
+        if (day === 1 || day === 4) {
+            this.canRefineEnergy = true
+            return
+        }
+        client.sendData('EVERY_DAY_BONUS_GET')
     }
 
     handlePacket(client, packet, buffer) {
@@ -185,6 +207,21 @@ class Player {
                     if (shaman === this.self.uid && this.room.playerCount > 1)
                         client.sendData('ROUND_SKILL_SHAMAN', 20, true)
                 })
+                break
+            case 'PacketGiftsTarget':
+                log('net', this.self.uid, 'Отправлены подарки')
+                client.sendData('GIFT_SEND', packet.data.ids)
+                break
+            case 'PacketGifts':
+                packet.data.items.forEach(gift => {
+                    setTimeout(() => {
+                        client.sendData('GIFT_ACCEPT', 0, gift.id)
+                        log('net', this.self.uid, 'Принят подарок ' + gift.id)
+                    }, gift.time * 1000 - Date.now())
+                })
+                break
+            case 'PacketDailyBonusData':
+                if (packet.data.haveBonus) this.claimBonus(client, packet.data.day)
                 break
             case 'PacketClanInfo':
                 if (packet.data.data[0].id === this.settings.clanIdToJoin)
@@ -227,6 +264,10 @@ class Player {
                     client.sendData('BUY', 45, 10, 0, this.self.uid, 0)
                     log('net', this.self.uid, 'Закуплен VIP на сутки')
                 }
+                if (this.energy < 10) {
+                    this.canRefineEnergy = false
+                    this.claimBonus(client)
+                }
                 break
             case 'PacketExpirations':
                 packet.data.items.forEach(item => {
@@ -253,7 +294,9 @@ class Player {
                 this.locationId = packet.data.locationId
                 this.isPrivate = packet.data.isPrivate
                 this.aliveTimer = setInterval(() => client.sendData('ROUND_ALIVE'), 5000)
-                this.room.playerCount = packet.data.players.length + 1
+                this.room.playerCount = packet.data.players.length + 2
+                if (packet.data.players.length)
+                    log('net', this.self.uid, 'В комнате находятся ' + packet.data.players)
                 break
             case 'PacketRoomRound':
                 if (packet.data.mapDuration > 0)
@@ -263,7 +306,7 @@ class Player {
                     log('net', this.self.uid, 'Начало раунда')
                     setTimeout(() => {
                         this.toHollow(client)
-                    }, this.settings.surrender ? (this.room.mapDuration - 10) * 1000 : 4000)
+                    }, this.settings.surrender && this.room.playerCount > 1 ? (this.room.mapDuration - 10) * 1000 : 4000)
                 }
                 break
             case 'PacketRoundDie':
@@ -275,27 +318,41 @@ class Player {
                     log('net', this.self.uid, 'В дупле')
                     client.sendData('AB_GUI_ACTION', 1)
                 }
-                if (this.settings.autoPlay) {
-                    if (!this.self.clan_id && this.self.level >= 8 && this.self.level >= this.clanLevelLimiter && !(this.settings.donateLevel && this.self.level >= this.settings.donateLevel))
-                        client.sendData('CLAN_JOIN', [this.settings.clanIdToJoin])
-                    if (this.settings.playInClan && !this.isPrivate && this.self.clan_id && this.rooms.length > 0) {
-                        log('net', this.self.uid, 'Найдены непустые комнаты в клане, переходим в них')
-                        client.sendData('LEAVE')
-                        this.startRound(client)
-                    }
-                    if (this.locationId !== this.settings.locationId && !this.isPrivate && this.locationId !== searchMaxLocationIdForLevel(this.self.level)) {
-                        log('net', this.self.uid, 'Доступны более высокие локации, переходим в них')
-                        client.sendData('LEAVE')
-                        this.startRound(client)
-                    }
+                if(this.settings.reconnectForDailyBonus && this.date !== this.getDate()) {
+                    let old_reconnect = this.settings.reconnect
+                    this.settings.reconnect = true
+                    client.close()
+                    this.settings.reconnect = old_reconnect
+                    return
+                }
+                if (!this.self.clan_id && this.self.level >= 8 && this.self.level >= this.clanLevelLimiter && !(this.settings.donateLevel && this.self.level >= this.settings.donateLevel))
+                    client.sendData('CLAN_JOIN', [this.settings.clanIdToJoin])
+                if (this.settings.playInClan && !this.isPrivate && this.self.clan_id && this.rooms.length > 0) {
+                    log('net', this.self.uid, 'Найдены непустые комнаты в клане, переходим в них')
+                    client.sendData('LEAVE')
+                    this.startRound(client)
+                }
+                if (this.locationId !== this.settings.locationId && !this.isPrivate && this.locationId !== searchMaxLocationIdForLevel(this.self.level)) {
+                    log('net', this.self.uid, 'Доступны более высокие локации, переходим в них')
+                    client.sendData('LEAVE')
+                    this.startRound(client)
                 }
                 break
             case 'PacketRoomJoin':
                 this.room.playerCount++
+                log('net', this.self.uid, 'Присоединился к комнате игрок ' + packet.data.playerId)
                 break
             case 'PacketRoomLeave':
                 this.room.playerCount--
-                if (packet.data.playerId !== this.self.uid) break
+                if (packet.data.playerId === this.settings.joinId) {
+                    log('net', this.self.uid, 'Игрок ' + this.settings.joinId + ' вышел из комнаты, выходим тоже.')
+                    client.sendData('LEAVE')
+                    return
+                }
+                if (packet.data.playerId !== this.self.uid) {
+                    log('net', this.self.uid, 'Покинул комнату игрок ' + packet.data.playerId)
+                    break
+                }
                 clearInterval(this.aliveTimer)
                 this.inRoom = false
                 log('net', this.self.uid, 'Выход из комнаты')
@@ -331,13 +388,14 @@ class Player {
         console.log('Запускаем автоплеер')
         if (this.settings.playInClan)
             await this.loadRooms(client)
-        this.checkModerators(client)
+        await this.checkModerators(client)
         setInterval(() => this.checkModerators(client), 10000)
         this.startRound(client)
         setInterval(() => this.startRound(client), 60000)
     }
 
     getRoomWithMinPlayers(rooms) {
+        if (this.settings.surrender) return rooms[0]
         let minPlayers = 14
         let minRoom = null
         rooms.map(room => {

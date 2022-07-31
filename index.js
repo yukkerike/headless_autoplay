@@ -1,8 +1,15 @@
 const Player = require('./Player')
-const fs = require("fs")
-const {sleep} = require("./helpers");
+const yaml = require('js-yaml')
+const fs = require('fs')
+const {sleep} = require('./helpers')
 
-const {host, ports, logNet, repl, players, defaults} = JSON.parse(fs.readFileSync('./config.json', 'utf8'))
+if(fs.existsSync('./config.json')){
+    let config = JSON.parse(fs.readFileSync('./config.json', 'utf8'))
+    fs.writeFileSync('./config.yml', yaml.dump(config), 'utf8')
+    fs.rmSync('./config.json')
+}
+
+const {host, ports, logNet, repl, players, defaults} = yaml.load(fs.readFileSync('./config.yml', 'utf8'))
 
 const clients = players.map((player, index) => {
     if (!player.session) {
@@ -21,12 +28,20 @@ const clients = players.map((player, index) => {
 })
 global.clients = clients
 
+function dump(){
+    clients.forEach(client => {
+        client.dump()
+        console.log('\n')
+    })
+}
+
 if (repl)
     (async  () => {
         await sleep(200)
         console.log('Список игроков – в массиве clients')
-        const repl = require('node:repl').REPLServer()
-        Object.assign(repl.context, {...require('./helpers'), clients})
+        console.log('Введите dump() для вывода информации об игроках, либо clients[индекс].dump() для вывода информации о конкретном игроке.')
+        const repl = require('repl').REPLServer()
+        Object.assign(repl.context, {...require('./helpers'), clients, yaml, fs, dump})
         repl.on('exit', terminate)
     })()
 

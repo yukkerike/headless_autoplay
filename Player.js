@@ -191,7 +191,7 @@ class Player {
     }
 
     claimBonus(client, day) {
-        if (day === 1 || day === 4) {
+        if ((day === 1 || day === 4) && this.settings.autoPlay) {
             this.canRefineEnergy = true
             return
         }

@@ -20,6 +20,6 @@ defaults:
   donateLevel: null
 players:
   - session: >-
-      ВАША СЕССИЯ
+      useApiType=vk&viewer_id=149194937&access_token=vk1.a.Dajlz-udNF_zuBnOOHnf8ToAFSUwn_FYjCZvrt2ujHD14XYWTPx80J1LO6Nd-b4akD56_aEfIMPtmEM3jJS363BaJnyXElSU4W_IQMue1RplHbdZCgRcnuhJIeuS6ve-o3IzQYQip64KGuLURRv68InXMty79KQABmnY0_uirCipm8QGfsIygVVAn_nfdzdv&api_url=https://api.vk.com/method/&auth_key=&token=c1d70866e776e5a2d5f33db4d49ffb9f&userId=149194937&net_type=0&OAuth=1&protocol=https:
   # - session: >-
   #     СЕССИЯ ВТОРОГО ИГРОКА

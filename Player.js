@@ -19,6 +19,7 @@ class Player {
         uid: null
     }
     inRoom = false
+    privateRoom = false
     locationId = 0
     moderatorsOnline = false
     rooms = []
@@ -281,7 +282,7 @@ class Player {
                 this.locationId = packet.data.locationId
                 this.isPrivate = packet.data.isPrivate
                 this.aliveTimer = setInterval(() => client.sendData('ROUND_ALIVE'), 5000)
-                this.room.playerCount = packet.data.players.length + 2
+                this.room.playerCount = packet.data.players.length + 1
                 if (packet.data.players.length)
                     log('net', this.self.uid, 'В комнате находятся ' + packet.data.players)
                 break
@@ -363,6 +364,12 @@ class Player {
         if (this.settings.checkModerators && this.moderatorsOnline) {
             client.sendData('LEAVE')
             log('net', this.self.uid, 'Модератор в сети, выходим из комнаты')
+            return
+        }
+        if (this.privateRoom && this.room.playerCount === 1) {
+            client.sendData('LEAVE')
+            this.inRoom = false
+            this.startRound(client)
         }
     }
 
@@ -406,6 +413,7 @@ class Player {
                     'PacketPlayWith',
                     200
                 )
+                this.privateRoom = false
                 if ([0, 1, 2, 3].indexOf(playWith.data.type) !== -1) {
                     log('net', this.self.uid, 'Невозможно присоединиться, статус:' + playWith.data.type + ', повторение через 10 секунд')
                     setTimeout(() => this.startRound(client), 10000)
@@ -432,16 +440,19 @@ class Player {
             }
             if (this.settings.roomId) {
                 client.sendData('PLAY_ROOM', this.settings.roomId)
+                this.privateRoom = true
                 log('net', this.self.uid, 'Вход в комнату', this.settings.roomId)
                 return
             }
         }
         if (this.settings.locationId > 0 && !this.self.clan_id && canJoinToLocation(this.settings.locationId, this.self.level)) {
             client.sendData('PLAY', this.settings.locationId, 0)
+            this.privateRoom = false
             log('net', this.self.uid, 'Поиск комнаты')
         } else {
             const id = searchMaxLocationIdForLevel(this.self.level)
             client.sendData('PLAY', id, 0)
+            this.privateRoom = false
             log('net', this.self.uid, 'Заходим в локацию с максимально высоким минимальным уровнем, id:' + id)
         }
     }

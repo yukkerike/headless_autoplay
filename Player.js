@@ -381,8 +381,6 @@ class Player {
 
     async startAutoplay(client) {
         console.log('Запускаем автоплеер')
-        if (this.settings.playInClan)
-            await this.loadRooms(client)
         await this.checkModerators(client)
         setInterval(() => this.checkModerators(client), 10000)
         this.startRound(client)
@@ -424,6 +422,7 @@ class Player {
             }
         }
         if (this.settings.playInClan && this.self.clan_id) {
+            await this.loadRooms(client)
             if (!this.settings.roomId || this.rooms.filter(room => room.roomId === this.settings.roomId).length === 0) {
                 log(this.self.uid, 'Комната не задана, либо не найдена. Фолбек на locationId.')
                 if (this.rooms.length === 0) {

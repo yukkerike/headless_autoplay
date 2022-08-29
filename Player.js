@@ -53,6 +53,7 @@ class Player {
         joinId: null,
         playInClan: true,
         roomId: null,
+        changeRooms: null,
         clanIdToJoin: null,
         locationId: 4,
         surrender: false,
@@ -65,6 +66,7 @@ class Player {
         this.host = host
         this.ports = ports
         this.settings = { ...this.settings, ...settings }
+        this.settings.changeRooms = this.settings.changeRooms === null && !this.settings.roomId
         this.openConnection()
     }
 
@@ -102,7 +104,7 @@ class Player {
     }
 
     dump() {
-        console.log('ID: ' + this.self.uid + '\nЭнергия: ' + this.energy + '\nОрехи: ' + this.nuts + '\nМонеты: ' + this.coins + '\nВ комнате: ' + (this.inRoom ? 'Да' : 'Нет'))
+        console.log('ID: ' + this.self.uid + '\nУровень: ' + this.self.level + '\nЭнергия: ' + this.energy + '\nОрехи: ' + this.nuts + '\nМонеты: ' + this.coins + '\nВ комнате: ' + (this.inRoom ? 'Да' : 'Нет'))
     }
 
     getDate() {
@@ -370,7 +372,11 @@ class Player {
         if (this.settings.checkModerators && this.moderatorsOnline) {
             client.sendData('LEAVE')
             log(this.self.uid, 'Модератор в сети, выходим из комнаты')
-            return
+        } else if (this.rooms.length > 1) {
+            client.sendData('LEAVE')
+            this.inRoom = false
+            log(this.self.uid, 'Меняем комнату для ускорения автокача')
+            this.startRound(client)
         }
     }
 
@@ -392,7 +398,7 @@ class Player {
         let minPlayers = 14
         let minRoom = null
         rooms.map(room => {
-            if (room.playersCount < minPlayers) {
+            if (room.playersCount < minPlayers && (this.rooms.length > 1 || room != this.settings.roomId)) {
                 minPlayers = room.playersCount
                 minRoom = room
             }
@@ -423,15 +429,15 @@ class Player {
         }
         if (this.settings.playInClan && this.self.clan_id) {
             await this.loadRooms(client)
-            if (!this.settings.roomId || this.rooms.filter(room => room.roomId === this.settings.roomId).length === 0) {
-                log(this.self.uid, 'Комната не задана, либо не найдена. Фолбек на locationId.')
+            if (!this.settings.roomId || this.settings.changeRooms || this.rooms.filter(room => room.roomId === this.settings.roomId).length === 0) {
                 if (this.rooms.length === 0) {
                     log(this.self.uid, 'Нет доступных комнат')
                     return
                 }
-                this.settings.roomId = this.rooms.filter(room => room.locationId === this.settings.locationId)
-                if (this.rooms.length !== 0) {
-                    this.settings.roomId = this.getRoomWithMinPlayers(this.rooms)
+                var rooms = this.rooms.filter(room => room.locationId === this.settings.locationId)
+                if (rooms.length !== 0) {
+                    this.settings.roomId = this.getRoomWithMinPlayers(rooms.length > 1 ? rooms.filter(room => room.roomId !== this.settings.roomId) : rooms)
+                    this.rooms = rooms
                 } else {
                     log(this.self.uid, 'Нет доступных комнат заданного типа, выбираем первую доступную с наименьшим числом игроков')
                     this.settings.roomId = this.getRoomWithMinPlayers(this.rooms)

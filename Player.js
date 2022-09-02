@@ -21,6 +21,8 @@ function log(...args) {
     Logger.info('net', date, ...args)
 }
 
+const guardReference = Buffer.from([6,0,0,0,2,0,0,0,0,0])
+
 class Player {
     self = {
         uid: null
@@ -282,6 +284,10 @@ class Player {
                 this.rooms = packet.data.items
                 break
             case 'PacketGuard':
+                if (Buffer.compare(buffer, guardReference) !== 0) {
+                    log(this.self.uid, 'Текущая версия автоплеера не может решать квизы, присылаемые с сервера, ожидайте обновлений.')
+                    process.exit()
+                }
                 client.sendData('GUARD', [])
                 break
             case 'PacketRoom':

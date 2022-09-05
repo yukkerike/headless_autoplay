@@ -54,6 +54,7 @@ class Player {
         autoPlay: true,
         joinId: null,
         playInClan: true,
+        paranoidMode: false,
         roomId: null,
         changeRooms: null,
         clanIdToJoin: null,
@@ -69,6 +70,7 @@ class Player {
         this.ports = ports
         this.settings = { ...this.settings, ...settings }
         this.settings.changeRooms = this.settings.changeRooms === null && !this.settings.roomId
+        this.settings.paranoidMode = this.settings.joinId ? false : this.settings.paranoidMode
         this.openConnection()
     }
 
@@ -171,12 +173,17 @@ class Player {
     async checkModerators(client) {
         if (!this.settings.checkModerators) return
         const ids = [[7], [22], [125330], [427140], [1452374], [4895807], [9419562], [9419675], [9479297], [11231704], [17986739]]
-        const online = (await executeAndWait(
-            client,
-            () => client.sendData('REQUEST', ids, 64),
-            'packet.incoming',
-            'PacketInfo',
-            1000)).data.data
+        try {
+            var online = (await executeAndWait(
+                client,
+                () => client.sendData('REQUEST', ids, 64),
+                'packet.incoming',
+                'PacketInfo',
+                1000)).data.data
+        } catch (e) {
+            log(this.self.uid, 'Ошибка при получении списка модераторов в сети, отсутствует интернет.')
+            return
+        }
         const isOnline = online.filter(id => id.online === 1).length > 0
         if (!isOnline && this.moderatorsOnline && !this.inRoom) {
             log(this.self.uid, 'Модератор вышел из сети, заходим в комнату')
@@ -297,6 +304,10 @@ class Player {
                 this.isPrivate = packet.data.isPrivate
                 this.aliveTimer = setInterval(() => client.sendData('ROUND_ALIVE'), 5000)
                 this.room.playerCount = packet.data.players.length + 1
+                if (this.settings.paranoidMode && this.room.playerCount > 1) {
+                    log(this.self.uid, 'Включен параноидальный режим, выходим.')
+                    client.sendData('LEAVE')
+                }
                 if (packet.data.players.length)
                     log(this.self.uid, 'В комнате находятся ' + packet.data.players)
                 break
@@ -343,6 +354,10 @@ class Player {
             case 'PacketRoomJoin':
                 this.room.playerCount++
                 log(this.self.uid, 'Присоединился к комнате игрок ' + packet.data.playerId)
+                if (this.settings.paranoidMode && this.room.playerCount > 1) {
+                    log(this.self.uid, 'Включен параноидальный режим, выходим.')
+                    client.sendData('LEAVE')
+                }
                 break
             case 'PacketRoomLeave':
                 this.room.playerCount--
@@ -403,8 +418,9 @@ class Player {
         if (this.settings.surrender) return rooms[0]
         let minPlayers = 14
         let minRoom = null
-        rooms.map(room => {
+        rooms.forEach(room => {
             if (room.playersCount < minPlayers && (this.rooms.length > 1 || room != this.settings.roomId)) {
+                if (this.settings.paranoidMode && room.playersCount > 0) return
                 minPlayers = room.playersCount
                 minRoom = room
             }

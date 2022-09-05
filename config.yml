@@ -11,6 +11,7 @@ defaults:
   checkModerators: true
   autoPlay: true
   playInClan: true
+  paranoidMode: false
   changeRooms: true
   locationId: 4
   surrender: false

@@ -6,4 +6,5 @@ module.exports = function (exp) {
         if (exp < levels[i].experience)
             return i - 1
     }
+    return ClientData.ConfigData.player.MAX_LEVEL
 }

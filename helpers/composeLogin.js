@@ -20,10 +20,10 @@ function composeLogin(token) {
                 key = session.authKey
                 ref = -1
                 break
-            case 'ok':
-                key = session.auth_sig
-                ref = 20000
-                break
+                case 'ok':
+                    key = session.auth_sig
+                    ref = 20000
+                    break
             case 'vk':
                 key = ""
                 ref = 0
@@ -56,10 +56,11 @@ function composeLogin(token) {
         }
     }
     result = [id, netType, OAuth, key, tag, ref]
-    if (socialFrameToken && session.useApiType !== 'sa')
-        result.push(session.token)
-    if (!socialFrameToken && session.useApiType === 'ok')
-        result.push(session.session_key)
+    if (!socialFrameToken)
+        if (session.useApiType !== 'sa')
+            result.push(session.token)
+        else if (session.useApiType === 'ok')
+            result.push(session.session_key)
     return result
 }
 

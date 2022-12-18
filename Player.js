@@ -69,7 +69,6 @@ class Player {
         this.host = host
         this.ports = ports
         this.settings = { ...this.settings, ...settings }
-        this.settings.changeRooms = this.settings.changeRooms === null && !this.settings.roomId
         this.settings.paranoidMode = this.settings.joinId ? false : this.settings.paranoidMode
         this.openConnection()
     }

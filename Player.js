@@ -440,8 +440,8 @@ class Player {
                     200
                 )
                 if ([0, 1, 2, 3].indexOf(playWith.data.type) !== -1) {
-                    log(this.self.uid, 'Невозможно присоединиться, статус:' + playWith.data.type + ', повторение через 10 секунд')
-                    setTimeout(() => this.startRound(client), 10000)
+                    log(this.self.uid, 'Невозможно присоединиться, статус: ' + playWith.data.type + ', повторение через 5 секунд')
+                    setTimeout(() => this.startRound(client), 5000)
                     return
                 }
             } catch (e) {
@@ -470,9 +470,9 @@ class Player {
                 return
             }
         }
-        if (this.settings.locationId > 0 && !this.self.clan_id && canJoinToLocation(this.settings.locationId, this.self.level)) {
+        if (this.settings.locationId > 0 && canJoinToLocation(this.settings.locationId, this.self.level)) {
             client.sendData('PLAY', this.settings.locationId, 0)
-            log(this.self.uid, 'Поиск комнаты')
+            log(this.self.uid, 'Поиск комнаты, id: ' + this.settings.locationId)
         } else {
             const id = searchMaxLocationIdForLevel(this.self.level)
             client.sendData('PLAY', id, 0)

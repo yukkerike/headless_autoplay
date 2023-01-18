@@ -21,9 +21,9 @@
 Поле __players__ представлено массивом. В него добавляются аккаунты, для которых автоплеер будет запущен.
 Внутри массива __"players"__ есть обязательное поле __session__, которое содержит токен игрока в query формате.
 
-Токен можно получить букмарклетом 
+Токен можно получить через редактор карт. Создайте шамана, платформу и кнопку. В свойствах кнопки поставьте галочку __HaXe (haxeScript)__ и разместите в ней следующий код:
 ```
-javascript:(function(){var _=prompt('',document.getElementById('flash-app').childNodes[1].value)})()
+Type.resolveClass("flash.external.ExternalInterface").call("eval", "var _=prompt('Ваш токен:',document.querySelector('object').childNodes[1].value)")
 ```
 
 Есть возможность задать настройки по умолчанию сразу для всех аккаунтов. Их нужно заносить в кортеж __"defaults"__. 

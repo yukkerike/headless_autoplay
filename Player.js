@@ -414,7 +414,7 @@ class Player {
     }
 
     getRoomWithMinPlayers(rooms) {
-        if (this.settings.surrender) return rooms[0]
+        if (this.settings.surrender) return rooms[0].roomId
         let minPlayers = 14
         let minRoom = null
         rooms.forEach(room => {

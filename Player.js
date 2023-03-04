@@ -52,6 +52,7 @@ class Player {
         session: "",
         log: false,
         autoPlay: true,
+        autoPlayDelay: 4000,
         joinId: null,
         playInClan: true,
         paranoidMode: false,
@@ -318,7 +319,7 @@ class Player {
                     log(this.self.uid, 'Начало раунда')
                     setTimeout(() => {
                         this.toHollow(client)
-                    }, this.settings.surrender && this.room.playerCount > 1 ? (this.room.mapDuration - 10) * 1000 : 4000)
+                    }, this.settings.surrender && this.room.playerCount > 1 ? (this.room.mapDuration - 10) * 1000 : this.settings.autoPlayDelay)
                 }
                 break
             case 'PacketRoundDie':

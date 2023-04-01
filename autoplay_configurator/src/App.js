@@ -15,7 +15,7 @@ function App() {
                 const element = document.createElement("a");
                 const file = new Blob([config], {type: 'text/plain'});
                 element.href = URL.createObjectURL(file);
-                element.download = "config.yaml";
+                element.download = "config.yml";
                 document.body.appendChild(element); // Required for this to work in FireFox
                 element.click();
                 element.remove();

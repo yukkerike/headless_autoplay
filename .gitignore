@@ -1,4 +1,4 @@
 .DS_Store
 *.log
 .idea
-
+autoplay_configurator/node_modules

@@ -1,0 +1,16 @@
+{
+  "name": "headless_autoplay",
+  "version": "0.0.16",
+  "description": "Автокач на основе sq-lib",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "sniff": "node sniff.js"
+  },
+  "author": "",
+  "license": "GPL-2.0",
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "sq-lib": "github:sovlet/sq-lib"
+  }
+}

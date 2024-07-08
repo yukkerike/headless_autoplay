@@ -1,0 +1,28 @@
+host: 88.212.206.137
+ports:
+  - '11111'
+  - '11211'
+  - '11311'
+logNet: false
+repl: true
+defaults:
+  reconnect: false
+  reconnectForDailyBonus: false
+  checkModerators: true
+  autoPlay: true
+  autoPlayDelay: 4000
+  playInClan: true
+  paranoidMode: false
+  changeRooms: true
+  locationId: 4
+  surrender: false
+  roomId: null
+  joinId: null
+  clanIdToJoin: 0
+  buyVIP: false
+  donateLevel: null
+players:
+  - session: >-
+      ВАША СЕССИЯ
+  # - session: >-
+  #     СЕССИЯ ВТОРОГО ИГРОКА
